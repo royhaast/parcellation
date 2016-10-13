@@ -17,7 +17,7 @@ parameters = ['R1', 'T2', 'thickness']  # which parameters to include
 
 print 'loading surface and input data for parcellation...'
 surf = nibabel.freesurfer.io.read_geometry(
-    'D:/MR_data/HBM_myelin/analyzed/fsaverage/surf/rh.inflated')
+    'sample_data/rh.inflated')
 nverts = len(surf[0])
 nfaces = len(surf[1])
 faces = surf[1]
@@ -26,16 +26,10 @@ coords = surf[0]
 data = np.zeros((nverts, len(parameters)))
 for j in range(0, len(parameters)):
     data_tmp = nibabel.freesurfer.io.read_morph_data(
-        'D:/MR_data/HBM_myelin/analyzed/fsaverage/parcellation/rh.%s' % parameters[j])
+        'sample_data/rh.%s' % parameters[j])
     data_tmp = stats.zscore(data_tmp)
     for i in range(0, nverts):
         data[i, j] = data_tmp[i]
-
-# ==============================================================================
-# Some variables used for calculating the silhouette scores
-# ==============================================================================
-n_iterations = 20
-size_dist = 200
 
 print '1. finding number of nearest neighbors...'
 st = time.time()
@@ -83,7 +77,6 @@ for i in range(0, len(num_nbrs)):
     IndY[range(0 + count, ThisSize + count)] = nbrs[i, range(0, ThisSize)]
     count = count + ThisSize
 
-# Not displayed in variable explorer, but can be accessed.
 connectivity = coo_matrix(
     ([1] * num_non_zero_entries, (IndX, IndY)), shape=(nverts, nverts))
 
@@ -104,11 +97,7 @@ print '     Done. Elapsed time (sec): ', time.time() - st
 #
 # del min_n_cluster, max_n_cluster, max_n_cluster2, max_n_cluster3, range_n_clusters_tmp, range_n_clusters_tmp2, range_n_clusters_tmp3
 
-range_n_clusters = [10]
-silhouette_scores_avg = np.zeros((np.size(range_n_clusters)))
-silhouette_scores_std = np.zeros((np.size(range_n_clusters)))
-calinski_scores_avg = np.zeros((np.size(range_n_clusters)))
-calinski_scores_std = np.zeros((np.size(range_n_clusters)))
+range_n_clusters = [160]
 
 print '4. compute structural hierarchical (Ward) clustering and silhouette scores...'
 
@@ -134,11 +123,11 @@ for c in range_n_clusters:
     exec('labels_%d_clusters' % c + " = ward.labels_")
     labels = ward.labels_
 
-    # ward_parcel_txt_string = 'D:/MR_data/HBM_myelin/analyzed/fsaverage/parcellation/rh_ward_%d_clusters.txt' % c
-    # np.savetxt(ward_parcel_txt_string, labels % c, fmt='%1.1i')
+    ward_parcel_txt_string = 'results/rh_ward_%d_clusters.txt' % c
+    np.savetxt(ward_parcel_txt_string, labels % c, fmt='%1.1i')
 
     # =========================================================================
-    # Generate borders using parcellation
+    # Generate borders/contours using parcellation
     # =========================================================================
     borders = np.zeros((nverts, 1))
     c_nbrs = np.zeros((nverts, 6))
@@ -148,13 +137,11 @@ for c in range_n_clusters:
         if len(np.unique(c_nbrs[v])) > 1:
             borders[v] = labels[v]
 
-    # borders_txt_string = 'D:/MR_data/HBM_myelin/analyzed/fsaverage/parcellation/rh_ward_%d_clusters_borders.txt' % c
-    # np.savetxt(borders_txt_string, borders, fmt='%1.1i')
-
-    print '     computing silhouette scores between clusters after clustering...'
+    borders_txt_string = 'results/rh_ward_%d_clusters_borders.txt' % c
+    np.savetxt(borders_txt_string, borders, fmt='%1.1i')
 
     # =========================================================================
-    # Find neighbouring clusters
+    # Find neighbouring clusters for each cluster
     # =========================================================================
     nbrs_clusters = np.zeros((nverts, max_num_nbrs))
     for i in range(0, nverts):
