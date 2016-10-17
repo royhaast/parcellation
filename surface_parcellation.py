@@ -116,8 +116,22 @@ for c in range_n_clusters:
     print '   - %d clusters' % c
     st = time.time()
 
+    # We should come up with a method to test different weightings for the different 
+    # features, probably within 'paired_distances' function
     ward = AgglomerativeClustering(
-        linkage='ward', n_clusters=c, connectivity=connectivity, pooling_func=np.nanmean).fit(X)
+        linkage='ward', n_clusters=c, connectivity=connectivity).fit(X)
+
+#==============================================================================
+# Get euclidean distance for each pair of vertices
+#==============================================================================
+
+    euclidean_distances = np.zeros((nverts, max_num_nbrs))    
+    k=0    
+    for i in range(0, nverts):
+        for j in range(0, num_nbrs[i]):
+            euclidean_distances[IndX[k],j] = connectivity.data[k]
+            k = k+1
+    exec('distances_%d_clusters' % c + " = euclidean_distances")
 
 # =============================================================================
 # - Perform pre-whitening (scikit, decomposition.PCA preprocessing)
