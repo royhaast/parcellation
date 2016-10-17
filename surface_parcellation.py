@@ -8,13 +8,15 @@ import numpy as np
 import time as time
 from scipy.sparse import coo_matrix
 from sklearn.cluster import AgglomerativeClustering
-from scipy import stats
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import Imputer
 
 # =============================================================================
-# Loading data & compute z-score for each parameter (e.g. R1, T2*...)
+# Loading data & perform data preprocessing for each parameter (e.g. R1, T2*...)
 # =============================================================================
 parameters = ['R1', 'T2', 'thickness']  # which parameters to include
-
+imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
+ 
 print 'loading surface and input data for parcellation...'
 surf = nibabel.freesurfer.io.read_geometry(
     'sample_data/rh.inflated')
@@ -26,10 +28,16 @@ coords = surf[0]
 data = np.zeros((nverts, len(parameters)))
 for j in range(0, len(parameters)):
     data_tmp = nibabel.freesurfer.io.read_morph_data(
-        'sample_data/rh.%s' % parameters[j])
-    data_tmp = stats.zscore(data_tmp)
+        'sample_data/01/rh.%s' % parameters[j])
+    if parameters[j] != 'thickness':         
+        data_tmp[data_tmp<=0] = np.nan  
+        data_tmp[data_tmp < np.percentile(data_tmp, 3)] = np.percentile(data_tmp, 3)
+        data_tmp[data_tmp > np.percentile(data_tmp, 97)] = np.percentile(data_tmp, 97)
     for i in range(0, nverts):
-        data[i, j] = data_tmp[i]
+        data[i, j] = data_tmp[i]  
+    
+# Perform whitening (decorrelation) of the data (after imputation to replace NaNs by mean of each feature)
+    data = PCA(whiten=True).fit_transform(imp.fit_transform(data))
 
 print '1. finding number of nearest neighbors...'
 st = time.time()
@@ -109,7 +117,7 @@ for c in range_n_clusters:
     st = time.time()
 
     ward = AgglomerativeClustering(
-        linkage='ward', n_clusters=c, connectivity=connectivity).fit(X)
+        linkage='ward', n_clusters=c, connectivity=connectivity, pooling_func=np.nanmean).fit(X)
 
 # =============================================================================
 # - Perform pre-whitening (scikit, decomposition.PCA preprocessing)
@@ -123,7 +131,7 @@ for c in range_n_clusters:
     exec('labels_%d_clusters' % c + " = ward.labels_")
     labels = ward.labels_
 
-    ward_parcel_txt_string = 'results/rh_ward_%d_clusters.txt' % c
+    ward_parcel_txt_string = 'results/rh_ward_%d_clusters_noCBF.txt' % c
     np.savetxt(ward_parcel_txt_string, labels % c, fmt='%1.1i')
 
     # =========================================================================
@@ -137,7 +145,7 @@ for c in range_n_clusters:
         if len(np.unique(c_nbrs[v])) > 1:
             borders[v] = labels[v]
 
-    borders_txt_string = 'results/rh_ward_%d_clusters_borders.txt' % c
+    borders_txt_string = 'results/rh_ward_%d_clusters_borders_noCBF.txt' % c
     np.savetxt(borders_txt_string, borders, fmt='%1.1i')
 
     # =========================================================================
