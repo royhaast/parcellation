@@ -11,10 +11,11 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
 
+
 def unique_rows(data):
     uniq = np.unique(data.view(data.dtype.descr * data.shape[1]))
     return uniq.view(data.dtype).reshape(-1, data.shape[1])
-    
+
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 
 # =============================================================================
@@ -24,11 +25,11 @@ parameters = ['R1', 'T2', 'CBF', 'thickness']  # which parameters to include
 
 # Generate an array of different weightings for each parameter that sum up to 1
 n_wcombs = 100
-weightings = np.zeros((n_wcombs,len(parameters)))
+weightings = np.zeros((n_wcombs, len(parameters)))
 for i in range(n_wcombs):
-    weightings[i] = np.random.dirichlet(np.ones(len(parameters)),size=1)
-weightings = unique_rows(weightings)    
- 
+    weightings[i] = np.random.dirichlet(np.ones(len(parameters)), size=1)
+weightings = unique_rows(weightings)
+
 print 'loading surface and input data for parcellation...'
 surf = nibabel.freesurfer.io.read_geometry(
     'sample_data/rh.inflated')
@@ -41,14 +42,17 @@ data = np.zeros((nverts, len(parameters)))
 for j in range(0, len(parameters)):
     data_tmp = nibabel.freesurfer.io.read_morph_data(
         'sample_data/01/rh.%s' % parameters[j])
-    if parameters[j] != 'thickness':         
-        data_tmp[data_tmp<=0] = np.nan  
-        data_tmp[data_tmp < np.percentile(data_tmp, 3)] = np.percentile(data_tmp, 3)
-        data_tmp[data_tmp > np.percentile(data_tmp, 97)] = np.percentile(data_tmp, 97)
+    if parameters[j] != 'thickness':
+        data_tmp[data_tmp <= 0] = np.nan
+        data_tmp[data_tmp < np.percentile(
+            data_tmp, 3)] = np.percentile(data_tmp, 3)
+        data_tmp[data_tmp > np.percentile(
+            data_tmp, 97)] = np.percentile(data_tmp, 97)
     for i in range(0, nverts):
-        data[i, j] = data_tmp[i]  
-    
-# Perform whitening (decorrelation) of the data (after imputation to replace NaNs by mean of each feature)
+        data[i, j] = data_tmp[i]
+
+# Perform whitening (decorrelation) of the data (after imputation to
+# replace NaNs by mean of each feature)
     data = PCA(whiten=True).fit_transform(imp.fit_transform(data))
 
 print '1. finding number of nearest neighbors...'
@@ -128,7 +132,7 @@ for c in range_n_clusters:
     print '   - %d clusters' % c
     st = time.time()
 
-    # We should come up with a method to test different weightings for the different 
+    # We should come up with a method to test different weightings for the different
     # features, probably within 'euclidean_distances' function
     #
     # e.g. something like:
@@ -144,12 +148,12 @@ for c in range_n_clusters:
 # Get euclidean distance for each pair of vertices
 #==============================================================================
 
-    euclidean_distances = np.zeros((nverts, max_num_nbrs))    
-    k=0    
+    euclidean_distances = np.zeros((nverts, max_num_nbrs))
+    k = 0
     for i in range(0, nverts):
         for j in range(0, num_nbrs[i]):
-            euclidean_distances[IndX[k],j] = connectivity.data[k]
-            k = k+1
+            euclidean_distances[IndX[k], j] = connectivity.data[k]
+            k = k + 1
     exec('distances_%d_clusters' % c + " = euclidean_distances")
 
     exec('labels_%d_clusters' % c + " = ward.labels_")
