@@ -31,12 +31,10 @@ for i in range(n_wcombs):
 weightings = unique_rows(weightings)
 
 print 'loading surface and input data for parcellation...'
-surf = nibabel.freesurfer.io.read_geometry(
+coords, faces = nibabel.freesurfer.io.read_geometry(
     'sample_data/rh.inflated')
-nverts = len(surf[0])
-nfaces = len(surf[1])
-faces = surf[1]
-coords = surf[0]
+nverts = len(coords)
+nfaces = len(faces)
 
 data = np.zeros((nverts, len(parameters)))
 for j in range(0, len(parameters)):
