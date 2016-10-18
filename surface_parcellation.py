@@ -7,14 +7,11 @@ import nibabel
 import numpy as np
 import time as time
 from scipy.sparse import coo_matrix
-from sklearn.cluster import AgglomerativeClustering
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
 
-
-def unique_rows(data):
-    uniq = np.unique(data.view(data.dtype.descr * data.shape[1]))
-    return uniq.view(data.dtype).reshape(-1, data.shape[1])
+from functions import (
+    unique_rows, generate_weights, agglomerativeclustering)
 
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 
@@ -22,6 +19,8 @@ imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 # Loading data & perform data preprocessing for each parameter (e.g. R1, T2*...)
 # =============================================================================
 parameters = ['R1', 'T2', 'CBF', 'thickness']  # which parameters to include
+n_wcombs = 100
+weightings = unique_rows(generate_weights(n_wcombs, parameters))
 
 # Generate an array of different weightings for each parameter that sum up to 1
 n_wcombs = 100
@@ -125,7 +124,7 @@ print '4. compute structural hierarchical (Ward) clustering and silhouette score
 
 X = np.zeros((nverts, 3))
 X = data
-silhouette_scores_index = 0
+
 for c in range_n_clusters:
     print '   - %d clusters' % c
     st = time.time()
@@ -139,7 +138,7 @@ for c in range_n_clusters:
     #
     # We should rewrite the AgglomerativeClustering to accept a list of different weightings
     #
-    ward = AgglomerativeClustering(
+    ward = agglomerativeclustering(
         linkage='ward', n_clusters=c, connectivity=connectivity).fit(X)
 
 #==============================================================================
