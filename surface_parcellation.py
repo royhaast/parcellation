@@ -31,25 +31,24 @@ weightings = unique_rows(weightings)
 
 print 'loading surface and input data for parcellation...'
 coords, faces = fs.io.read_geometry('sample_data/rh.inflated')
-nverts = len(coords)
-nfaces = len(faces)
+nverts, nfaces = coords.shape[0], faces.shape[0]
 
+# Truncation
 data = np.zeros((nverts, len(parameters)))
-for j in range(0, len(parameters)):
-    data_tmp = fs.io.read_morph_data('sample_data/01/rh.%s' % parameters[j])
-    if parameters[j] != 'thickness':
+for i, string in enumerate(parameters):
+    data_tmp = fs.io.read_morph_data('sample_data/01/rh.%s' % string)
+    if string != 'thickness':
         data_tmp[data_tmp <= 0] = np.nan
         perc_min = np.nanpercentile(data_tmp, 3)
-        perc_max = np.nanpercentile(data_tmp, 3)
+        perc_max = np.nanpercentile(data_tmp, 97)
         data_tmp_finite = data_tmp[np.isfinite(data_tmp)]
         data_tmp_finite[data_tmp_finite < perc_min] = perc_min
         data_tmp_finite[data_tmp_finite > perc_max] = perc_max
         data_tmp[np.isfinite(data_tmp)] = data_tmp_finite
-    for i in range(0, nverts):
-        data[i, j] = data_tmp[i]
+        data[:, i] = data_tmp
 
-# Perform whitening (decorrelation) of the data (after imputation to
-# replace NaNs by mean of each feature)
+    # Perform whitening (decorrelation) of the data (after imputation to
+    # replace NaNs by mean of each feature)
     data = PCA(whiten=True).fit_transform(imp.fit_transform(data))
 
 print '1. finding number of nearest neighbors...'
