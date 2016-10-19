@@ -3,9 +3,9 @@
 Based on the Frontiers paper and codes by Thririon, B. (2014).
 """
 
-import nibabel
 import numpy as np
-import time as time
+from time import time
+from nibabel import freesurfer as fs
 from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
@@ -30,15 +30,13 @@ for i in range(n_wcombs):
 weightings = unique_rows(weightings)
 
 print 'loading surface and input data for parcellation...'
-coords, faces = nibabel.freesurfer.io.read_geometry(
-    'sample_data/rh.inflated')
+coords, faces = fs.io.read_geometry('sample_data/rh.inflated')
 nverts = len(coords)
 nfaces = len(faces)
 
 data = np.zeros((nverts, len(parameters)))
 for j in range(0, len(parameters)):
-    data_tmp = nibabel.freesurfer.io.read_morph_data(
-        'sample_data/01/rh.%s' % parameters[j])
+    data_tmp = fs.io.read_morph_data('sample_data/01/rh.%s' % parameters[j])
     if parameters[j] != 'thickness':
         data_tmp[data_tmp <= 0] = np.nan
         perc_min = np.nanpercentile(data_tmp, 3)
@@ -55,19 +53,19 @@ for j in range(0, len(parameters)):
     data = PCA(whiten=True).fit_transform(imp.fit_transform(data))
 
 print '1. finding number of nearest neighbors...'
-st = time.time()
+st = time()
 num_nbrs = [0] * nverts
 
 for i in range(0, nfaces):
-    num_nbrs[faces[i, 0]] = num_nbrs[faces[i, 0]] + 1
-    num_nbrs[faces[i, 1]] = num_nbrs[faces[i, 1]] + 1
-    num_nbrs[faces[i, 2]] = num_nbrs[faces[i, 2]] + 1
+    num_nbrs[faces[i, 0]] += 1
+    num_nbrs[faces[i, 1]] += 1
+    num_nbrs[faces[i, 2]] += 1
 
 max_num_nbrs = max(num_nbrs)
-print '     Done. Elapsed time (sec): ', time.time() - st
+print '     Done. Elapsed time (sec): ', time() - st
 
 print '2. finding nearest neighbors...'
-st = time.time()
+st = time()
 nbrs = np.zeros((nverts, max_num_nbrs))
 
 for i in range(0, nfaces):
@@ -83,10 +81,10 @@ for i in range(0, nfaces):
                     n_nbr = min(n_nbr)
                     nbrs[vcur, n_nbr] = vnbr
 
-print '     Done. Elapsed time (sec): ', time.time() - st
+print '     Done. Elapsed time (sec): ', time() - st
 
 print '3. computing connectivity matrix...'
-st = time.time()
+st = time()
 
 num_non_zero_entries = np.sum(num_nbrs)
 num_non_zero_entries = np.int64(num_non_zero_entries)
@@ -103,7 +101,7 @@ for i in range(0, len(num_nbrs)):
 connectivity = coo_matrix(
     ([1] * num_non_zero_entries, (IndX, IndY)), shape=(nverts, nverts))
 
-print '     Done. Elapsed time (sec): ', time.time() - st
+print '     Done. Elapsed time (sec): ', time() - st
 
 # =============================================================================
 # Generate vector of cluster numbers
@@ -129,7 +127,7 @@ X = data
 
 for c in range_n_clusters:
     print '   - %d clusters' % c
-    st = time.time()
+    st = time()
 
     # We should come up with a method to test different weightings for the different
     # features, probably within 'euclidean_distances' function
