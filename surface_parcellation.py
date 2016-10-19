@@ -10,14 +10,14 @@ from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
 
-from functions import (
-    unique_rows, generate_weights, agglomerativeclustering)
+from utility_functions import unique_rows, generate_weights
 
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 
 # =============================================================================
-# Loading data & perform data preprocessing for each parameter (e.g. R1, T2*...)
+# Load data & perform data preprocessing for each parameter (e.g. R1, T2*...)
 # =============================================================================
+
 parameters = ['R1', 'T2', 'CBF', 'thickness']  # which parameters to include
 n_wcombs = 100
 weightings = unique_rows(generate_weights(n_wcombs, parameters))
@@ -41,8 +41,12 @@ for j in range(0, len(parameters)):
         'sample_data/01/rh.%s' % parameters[j])
     if parameters[j] != 'thickness':
         data_tmp[data_tmp <= 0] = np.nan
-        data_tmp[data_tmp < np.nanpercentile(data_tmp, 3)] = np.nanpercentile(data_tmp, 3)
-        data_tmp[data_tmp > np.nanpercentile(data_tmp, 97)] = np.nanpercentile(data_tmp, 97)
+        perc_min = np.nanpercentile(data_tmp, 3)
+        perc_max = np.nanpercentile(data_tmp, 3)
+        data_tmp_finite = data_tmp[np.isfinite(data_tmp)]
+        data_tmp_finite[data_tmp_finite < perc_min] = perc_min
+        data_tmp_finite[data_tmp_finite > perc_max] = perc_max
+        data_tmp[np.isfinite(data_tmp)] = data_tmp_finite
     for i in range(0, nverts):
         data[i, j] = data_tmp[i]
 
