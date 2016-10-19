@@ -3,42 +3,36 @@
 Based on the Frontiers paper and codes by Thririon, B. (2014).
 """
 
+import os
 import nibabel
 import numpy as np
 import time as time
 from scipy.sparse import coo_matrix
+from sklearn.cluster import AgglomerativeClustering
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
-
-from functions import (
-    unique_rows, generate_weights, agglomerativeclustering)
+from functions import *
 
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
+cdir = os.path.dirname(os.path.abspath(__file__))
 
 # =============================================================================
 # Loading data & perform data preprocessing for each parameter (e.g. R1, T2*...)
 # =============================================================================
 parameters = ['R1', 'T2', 'CBF', 'thickness']  # which parameters to include
 n_wcombs = 100
-weightings = unique_rows(generate_weights(n_wcombs, parameters))
-
-# Generate an array of different weightings for each parameter that sum up to 1
-n_wcombs = 100
-weightings = np.zeros((n_wcombs, len(parameters)))
-for i in range(n_wcombs):
-    weightings[i] = np.random.dirichlet(np.ones(len(parameters)), size=1)
-weightings = unique_rows(weightings)
+weightings = generate_weights(n_wcombs, parameters)
 
 print 'loading surface and input data for parcellation...'
 coords, faces = nibabel.freesurfer.io.read_geometry(
-    'sample_data/rh.inflated')
+    '%s\sample_data\\rh.inflated' % cdir)
 nverts = len(coords)
 nfaces = len(faces)
 
 data = np.zeros((nverts, len(parameters)))
 for j in range(0, len(parameters)):
     data_tmp = nibabel.freesurfer.io.read_morph_data(
-        'sample_data/01/rh.%s' % parameters[j])
+        '%s\sample_data\\01\\rh.%s' % (cdir, parameters[j]))
     if parameters[j] != 'thickness':
         data_tmp[data_tmp <= 0] = np.nan
         data_tmp[data_tmp < np.percentile(
@@ -138,8 +132,8 @@ for c in range_n_clusters:
     #
     # We should rewrite the AgglomerativeClustering to accept a list of different weightings
     #
-    ward = agglomerativeclustering(
-        linkage='ward', n_clusters=c, connectivity=connectivity).fit(X)
+    ward = AgglomerativeClustering(
+        linkage='ward', n_clusters=c, connectivity=connectivity, weights=weightings[0]).fit(X)
 
 #==============================================================================
 # Get euclidean distance for each pair of vertices
@@ -156,7 +150,7 @@ for c in range_n_clusters:
     exec('labels_%d_clusters' % c + " = ward.labels_")
     labels = ward.labels_
 
-    ward_parcel_txt_string = 'results/rh_ward_%d_clusters_noCBF.txt' % c
+    ward_parcel_txt_string = 'results/rh_ward_%d_clusters.txt' % c
     np.savetxt(ward_parcel_txt_string, labels % c, fmt='%1.1i')
 
     # =========================================================================
@@ -170,7 +164,7 @@ for c in range_n_clusters:
         if len(np.unique(c_nbrs[v])) > 1:
             borders[v] = labels[v]
 
-    borders_txt_string = 'results/rh_ward_%d_clusters_borders_noCBF.txt' % c
+    borders_txt_string = 'results/rh_ward_%d_clusters_borders.txt' % c
     np.savetxt(borders_txt_string, borders, fmt='%1.1i')
 
     # =========================================================================
@@ -196,3 +190,5 @@ for c in range_n_clusters:
     X_labeled = np.empty((nverts, 4))
     X_labeled[:, 0:3] = X[:, 0:3]
     X_labeled[:, 3] = labels
+    
+print '     Done. Elapsed time (sec): ', time.time() - st
