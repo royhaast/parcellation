@@ -14,15 +14,18 @@ from sklearn.utils.sparsetools import connected_components
 from sklearn import _hierarchical
 from sklearn.externals.six.moves import xrange
 
+
 def generate_weights(n_wcombs, parameters):
     weightings = np.zeros((n_wcombs, len(parameters)))
     for i in range(n_wcombs):
-        weightings[i] = np.random.dirichlet(np.ones(len(parameters)),size=1)
-        
+        weightings[i] = np.random.dirichlet(np.ones(len(parameters)), size=1)
+
+
 def unique_rows(data):
     uniq = np.unique(data.view(data.dtype.descr * data.shape[1]))
-    return uniq.view(data.dtype).reshape(-1, data.shape[1])    
-    
+    return uniq.view(data.dtype).reshape(-1, data.shape[1])
+
+
 def _fix_connectivity(X, connectivity, n_components=None,
                       affinity="euclidean"):
     """
@@ -75,6 +78,7 @@ def _fix_connectivity(X, connectivity, n_components=None,
 
 ###############################################################################
 # Hierarchical tree building functions
+
 
 def ward_tree(X, connectivity=None, n_clusters=None, return_distance=False):
     """Ward clustering based on a Feature matrix.
@@ -284,6 +288,7 @@ _TREE_BUILDERS = dict(
 
 ###############################################################################
 # Functions for cutting  hierarchical clustering tree
+
 
 def _hc_cut(n_clusters, children, n_leaves):
     """Function cutting the ward tree for a given number of clusters.
@@ -495,4 +500,3 @@ class agglomerativeclustering(BaseEstimator, ClusterMixin):
             # Reassign cluster numbers
             self.labels_ = np.searchsorted(np.unique(labels), labels)
         return self
-
