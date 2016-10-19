@@ -9,7 +9,6 @@ from nibabel import freesurfer as fs
 from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
-
 from utility_functions import unique_rows, generate_weights
 
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
@@ -119,7 +118,7 @@ print '     Done. Elapsed time (sec): ', time() - st
 
 range_n_clusters = [160]
 
-print '4. compute structural hierarchical (Ward) clustering and silhouette scores...'
+print '4. compute structural hierarchical (Ward) clustering...'
 
 X = np.zeros((nverts, 3))
 X = data
@@ -140,9 +139,9 @@ for c in range_n_clusters:
     ward = agglomerativeclustering(
         linkage='ward', n_clusters=c, connectivity=connectivity).fit(X)
 
-#==============================================================================
+# =============================================================================
 # Get euclidean distance for each pair of vertices
-#==============================================================================
+# =============================================================================
 
     euclidean_distances = np.zeros((nverts, max_num_nbrs))
     k = 0
