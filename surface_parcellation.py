@@ -55,7 +55,7 @@ print '1. finding number of nearest neighbors...'
 st = time()
 num_nbrs = [0] * nverts
 
-for i in range(0, nfaces):
+for i in range(nfaces):
     num_nbrs[faces[i, 0]] += 1
     num_nbrs[faces[i, 1]] += 1
     num_nbrs[faces[i, 2]] += 1
@@ -67,10 +67,10 @@ print '2. finding nearest neighbors...'
 st = time()
 nbrs = np.zeros((nverts, max_num_nbrs))
 
-for i in range(0, nfaces):
-    for j in range(0, 3):
+for i in range(nfaces):
+    for j in range(3):
         vcur = faces[i, j]
-        for k in range(0, 3):
+        for k in range(3):
             if j != k:
                 vnbr = faces[i, k]
                 if vnbr in nbrs[vcur, :]:
