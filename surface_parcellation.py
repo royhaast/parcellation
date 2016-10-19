@@ -9,7 +9,8 @@ from nibabel import freesurfer as fs
 from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
-from utility_functions import unique_rows, generate_weights
+from utility_functions import generate_weights
+from sklearn.cluster import AgglomerativeClustering
 
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 
@@ -19,14 +20,7 @@ imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 
 parameters = ['R1', 'T2', 'CBF', 'thickness']  # which parameters to include
 n_wcombs = 100
-weightings = unique_rows(generate_weights(n_wcombs, parameters))
-
-# Generate an array of different weightings for each parameter that sum up to 1
-n_wcombs = 100
-weightings = np.zeros((n_wcombs, len(parameters)))
-for i in range(n_wcombs):
-    weightings[i] = np.random.dirichlet(np.ones(len(parameters)), size=1)
-weightings = unique_rows(weightings)
+weightings = generate_weights(n_wcombs, parameters)
 
 print 'loading surface and input data for parcellation...'
 coords, faces = fs.io.read_geometry('sample_data/rh.inflated')
@@ -136,8 +130,8 @@ for c in range_n_clusters:
     #
     # We should rewrite the AgglomerativeClustering to accept a list of different weightings
     #
-    ward = agglomerativeclustering(
-        linkage='ward', n_clusters=c, connectivity=connectivity).fit(X)
+    ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
+                                   connectivity=connectivity).fit(X)
 
 # =============================================================================
 # Get euclidean distance for each pair of vertices
