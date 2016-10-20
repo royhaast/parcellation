@@ -35,10 +35,8 @@ for j in range(0, len(parameters)):
         '%s\sample_data\\01\\rh.%s' % (cdir, parameters[j]))
     if parameters[j] != 'thickness':
         data_tmp[data_tmp <= 0] = np.nan
-        data_tmp[data_tmp < np.percentile(
-            data_tmp, 3)] = np.percentile(data_tmp, 3)
-        data_tmp[data_tmp > np.percentile(
-            data_tmp, 97)] = np.percentile(data_tmp, 97)
+        data_tmp[data_tmp < np.nanpercentile(data_tmp, 3)] = np.nanpercentile(data_tmp, 3)
+        data_tmp[data_tmp > np.nanpercentile(data_tmp, 97)] = np.nanpercentile(data_tmp, 97)
     for i in range(0, nverts):
         data[i, j] = data_tmp[i]
 
