@@ -114,29 +114,19 @@ range_n_clusters = [160]
 
 print '4. compute structural hierarchical (Ward) clustering...'
 
-X = np.zeros((nverts, 3))
-X = data
+X = np.copy(data)
 
 for c in range_n_clusters:
     print '   - %d clusters' % c
     st = time()
 
-    # We should come up with a method to test different weightings for the different
-    # features, probably within 'euclidean_distances' function
-    #
-    # e.g. something like:
-    # distance(vertex A, connected vertex B) = sqrt(sum_across_features(beta*(feature 1 vertex A - feature 1 vertex B)^2))
-    # beta are the weightings for each features
-    #
-    # We should rewrite the AgglomerativeClustering to accept a list of different weightings
-    #
     ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
+                                   weights=weightings[0],
                                    connectivity=connectivity).fit(X)
 
-# =============================================================================
-# Get euclidean distance for each pair of vertices
-# =============================================================================
-
+    # =========================================================================
+    # Get euclidean distance for each pair of vertices
+    # =========================================================================
     euclidean_distances = np.zeros((nverts, max_num_nbrs))
     k = 0
     for i in range(0, nverts):
@@ -177,8 +167,8 @@ for c in range_n_clusters:
     unique_nbrs_clusters = np.empty((c, c))
     unique_nbrs_clusters[:] = np.NAN
     for i in range(0, c):
-        unique_nbrs_clusters[0:len(np.unique(nbrs_clusters[np.where(
-            labels == i)])), i] = np.unique(nbrs_clusters[np.where(labels == i)])
+        temp = nbrs_clusters[labels == i]
+        unique_nbrs_clusters[0:len(np.unique(temp)), i] = np.unique(temp)
     mask = np.all(np.isnan(unique_nbrs_clusters), axis=1)
     unique_nbrs_clusters = unique_nbrs_clusters[~mask]
 
@@ -188,3 +178,5 @@ for c in range_n_clusters:
     X_labeled = np.empty((nverts, 4))
     X_labeled[:, 0:3] = X[:, 0:3]
     X_labeled[:, 3] = labels
+
+print 'Finished.'
