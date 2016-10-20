@@ -1,69 +1,68 @@
 """Script for surface-based parcellation using freesurfer files.
-
 Based on the Frontiers paper and codes by Thririon, B. (2014).
 """
 
-import os
-import nibabel
 import numpy as np
-import time as time
+from time import time
+from nibabel import freesurfer as fs
 from scipy.sparse import coo_matrix
-from sklearn.cluster import AgglomerativeClustering
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
-from functions import *
+from utility_functions import generate_weights
+from sklearn.cluster import AgglomerativeClustering
 
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
-cdir = os.path.dirname(os.path.abspath(__file__))
 
 # =============================================================================
-# Loading data & perform data preprocessing for each parameter (e.g. R1, T2*...)
+# Load data & perform data preprocessing for each parameter (e.g. R1, T2*...)
 # =============================================================================
+
 parameters = ['R1', 'T2', 'CBF', 'thickness']  # which parameters to include
 n_wcombs = 100
 weightings = generate_weights(n_wcombs, parameters)
 
 print 'loading surface and input data for parcellation...'
-coords, faces = nibabel.freesurfer.io.read_geometry(
-    '%s\sample_data\\rh.inflated' % cdir)
-nverts = len(coords)
-nfaces = len(faces)
+coords, faces = fs.io.read_geometry('sample_data/rh.inflated')
+nverts, nfaces = coords.shape[0], faces.shape[0]
 
+# Truncation
 data = np.zeros((nverts, len(parameters)))
-for j in range(0, len(parameters)):
-    data_tmp = nibabel.freesurfer.io.read_morph_data(
-        '%s\sample_data\\01\\rh.%s' % (cdir, parameters[j]))
-    if parameters[j] != 'thickness':
+for i, string in enumerate(parameters):
+    data_tmp = fs.io.read_morph_data('sample_data/01/rh.%s' % string)
+    if string != 'thickness':
         data_tmp[data_tmp <= 0] = np.nan
-        data_tmp[data_tmp < np.nanpercentile(data_tmp, 3)] = np.nanpercentile(data_tmp, 3)
-        data_tmp[data_tmp > np.nanpercentile(data_tmp, 97)] = np.nanpercentile(data_tmp, 97)
-    for i in range(0, nverts):
-        data[i, j] = data_tmp[i]
+        perc_min = np.nanpercentile(data_tmp, 3)
+        perc_max = np.nanpercentile(data_tmp, 97)
+        data_tmp_finite = data_tmp[np.isfinite(data_tmp)]
+        data_tmp_finite[data_tmp_finite < perc_min] = perc_min
+        data_tmp_finite[data_tmp_finite > perc_max] = perc_max
+        data_tmp[np.isfinite(data_tmp)] = data_tmp_finite
+        data[:, i] = data_tmp
 
-# Perform whitening (decorrelation) of the data (after imputation to
-# replace NaNs by mean of each feature)
+    # Perform whitening (decorrelation) of the data (after imputation to
+    # replace NaNs by mean of each feature)
     data = PCA(whiten=True).fit_transform(imp.fit_transform(data))
 
 print '1. finding number of nearest neighbors...'
-st = time.time()
+st = time()
 num_nbrs = [0] * nverts
 
-for i in range(0, nfaces):
-    num_nbrs[faces[i, 0]] = num_nbrs[faces[i, 0]] + 1
-    num_nbrs[faces[i, 1]] = num_nbrs[faces[i, 1]] + 1
-    num_nbrs[faces[i, 2]] = num_nbrs[faces[i, 2]] + 1
+for i in range(nfaces):
+    num_nbrs[faces[i, 0]] += 1
+    num_nbrs[faces[i, 1]] += 1
+    num_nbrs[faces[i, 2]] += 1
 
 max_num_nbrs = max(num_nbrs)
-print '     Done. Elapsed time (sec): ', time.time() - st
+print '     Done. Elapsed time (sec): ', time() - st
 
 print '2. finding nearest neighbors...'
-st = time.time()
+st = time()
 nbrs = np.zeros((nverts, max_num_nbrs))
 
-for i in range(0, nfaces):
-    for j in range(0, 3):
+for i in range(nfaces):
+    for j in range(3):
         vcur = faces[i, j]
-        for k in range(0, 3):
+        for k in range(3):
             if j != k:
                 vnbr = faces[i, k]
                 if vnbr in nbrs[vcur, :]:
@@ -73,10 +72,10 @@ for i in range(0, nfaces):
                     n_nbr = min(n_nbr)
                     nbrs[vcur, n_nbr] = vnbr
 
-print '     Done. Elapsed time (sec): ', time.time() - st
+print '     Done. Elapsed time (sec): ', time() - st
 
 print '3. computing connectivity matrix...'
-st = time.time()
+st = time()
 
 num_non_zero_entries = np.sum(num_nbrs)
 num_non_zero_entries = np.int64(num_non_zero_entries)
@@ -93,7 +92,7 @@ for i in range(0, len(num_nbrs)):
 connectivity = coo_matrix(
     ([1] * num_non_zero_entries, (IndX, IndY)), shape=(nverts, nverts))
 
-print '     Done. Elapsed time (sec): ', time.time() - st
+print '     Done. Elapsed time (sec): ', time() - st
 
 # =============================================================================
 # Generate vector of cluster numbers
@@ -112,14 +111,14 @@ print '     Done. Elapsed time (sec): ', time.time() - st
 
 range_n_clusters = [160]
 
-print '4. compute structural hierarchical (Ward) clustering and silhouette scores...'
+print '4. compute structural hierarchical (Ward) clustering...'
 
 X = np.zeros((nverts, 3))
 X = data
 
 for c in range_n_clusters:
     print '   - %d clusters' % c
-    st = time.time()
+    st = time()
 
     # We should come up with a method to test different weightings for the different
     # features, probably within 'euclidean_distances' function
@@ -130,12 +129,12 @@ for c in range_n_clusters:
     #
     # We should rewrite the AgglomerativeClustering to accept a list of different weightings
     #
-    ward = AgglomerativeClustering(
-        linkage='ward', n_clusters=c, connectivity=connectivity, weights=weightings[0]).fit(X)
+    ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
+                                   connectivity=connectivity).fit(X)
 
-#==============================================================================
+# =============================================================================
 # Get euclidean distance for each pair of vertices
-#==============================================================================
+# =============================================================================
 
     euclidean_distances = np.zeros((nverts, max_num_nbrs))
     k = 0
@@ -148,7 +147,7 @@ for c in range_n_clusters:
     exec('labels_%d_clusters' % c + " = ward.labels_")
     labels = ward.labels_
 
-    ward_parcel_txt_string = 'results/rh_ward_%d_clusters.txt' % c
+    ward_parcel_txt_string = 'results/rh_ward_%d_clusters_noCBF.txt' % c
     np.savetxt(ward_parcel_txt_string, labels % c, fmt='%1.1i')
 
     # =========================================================================
@@ -162,7 +161,7 @@ for c in range_n_clusters:
         if len(np.unique(c_nbrs[v])) > 1:
             borders[v] = labels[v]
 
-    borders_txt_string = 'results/rh_ward_%d_clusters_borders.txt' % c
+    borders_txt_string = 'results/rh_ward_%d_clusters_borders_noCBF.txt' % c
     np.savetxt(borders_txt_string, borders, fmt='%1.1i')
 
     # =========================================================================
@@ -188,5 +187,3 @@ for c in range_n_clusters:
     X_labeled = np.empty((nverts, 4))
     X_labeled[:, 0:3] = X[:, 0:3]
     X_labeled[:, 3] = labels
-    
-print '     Done. Elapsed time (sec): ', time.time() - st
