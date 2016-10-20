@@ -6,6 +6,7 @@ Based on the Frontiers paper and codes by Thririon, B. (2014).
 import numpy as np
 from time import time
 from nibabel import freesurfer as fs
+from nibabel import save
 from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
@@ -13,6 +14,11 @@ from utility_functions import generate_weights
 from sklearn.cluster import AgglomerativeClustering
 
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
+
+# =============================================================================
+# Load .mgh file to use its headers.
+# =============================================================================
+mgh = fs.mghformat.load('sample_data/01/rh.rs-fMRI.mgh')
 
 # =============================================================================
 # Load data & perform data preprocessing for each parameter (e.g. R1, T2*...)
@@ -179,4 +185,16 @@ for c in range_n_clusters:
     X_labeled[:, 0:3] = X[:, 0:3]
     X_labeled[:, 3] = labels
 
-print 'Finished.'
+print 'Done.'
+
+# save as mgh
+temp = mgh.get_data()
+temp[:, 0, 0] = np.squeeze(labels)
+out = fs.MGHImage(temp, mgh.affine, mgh.header)
+save(out, ward_parcel_txt_string[:-4] + '.mgh')
+
+temp[:, 0, 0] = np.squeeze(borders)
+out = fs.MGHImage(temp, mgh.affine, mgh.header)
+save(out, borders_txt_string[:-4] + '.mgh')
+
+print 'All outputs saved.'
