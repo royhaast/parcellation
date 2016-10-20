@@ -61,3 +61,6 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+# for not uploading many results by mistake
+results/*
