@@ -5,10 +5,7 @@ Based on the Frontiers paper and codes by Thririon, B. (2014).
 import numpy as np
 from time import time
 from nibabel import freesurfer as fs
-<<<<<<< HEAD
-=======
 from nibabel import save
->>>>>>> refs/remotes/origin/faruk_tests
 from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
@@ -18,14 +15,11 @@ from sklearn.cluster import AgglomerativeClustering
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 
 # =============================================================================
-<<<<<<< HEAD
-=======
 # Load .mgh file to use its headers.
 # =============================================================================
 mgh = fs.mghformat.load('sample_data/01/rh.rs-fMRI.mgh')
 
 # =============================================================================
->>>>>>> refs/remotes/origin/faruk_tests
 # Load data & perform data preprocessing for each parameter (e.g. R1, T2*...)
 # =============================================================================
 
@@ -131,27 +125,9 @@ for c in range_n_clusters:
     print '   - %d clusters' % c
     st = time()
 
-<<<<<<< HEAD
-    # We should come up with a method to test different weightings for the different
-    # features, probably within 'euclidean_distances' function
-    #
-    # e.g. something like:
-    # distance(vertex A, connected vertex B) = sqrt(sum_across_features(beta*(feature 1 vertex A - feature 1 vertex B)^2))
-    # beta are the weightings for each features
-    #
-    # We should rewrite the AgglomerativeClustering to accept a list of different weightings
-    #
-    ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
-                                   connectivity=connectivity).fit(X)
-
-# =============================================================================
-# Get euclidean distance for each pair of vertices
-# =============================================================================
-=======
     ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
                                    weights=weightings[0],
                                    connectivity=connectivity).fit(X)
->>>>>>> refs/remotes/origin/faruk_tests
 
     # =========================================================================
     # Get euclidean distance for each pair of vertices
@@ -206,9 +182,6 @@ for c in range_n_clusters:
     # =========================================================================
     X_labeled = np.empty((nverts, 4))
     X_labeled[:, 0:3] = X[:, 0:3]
-<<<<<<< HEAD
-    X_labeled[:, 3] = labels
-=======
     X_labeled[:, 3] = labels
 
 print 'Done.'
@@ -224,4 +197,3 @@ out = fs.MGHImage(temp, mgh.affine, mgh.header)
 save(out, borders_txt_string[:-4] + '.mgh')
 
 print 'All outputs saved.'
->>>>>>> refs/remotes/origin/faruk_tests
