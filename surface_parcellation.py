@@ -5,6 +5,10 @@ Based on the Frontiers paper and codes by Thririon, B. (2014).
 import numpy as np
 from time import time
 from nibabel import freesurfer as fs
+<<<<<<< HEAD
+=======
+from nibabel import save
+>>>>>>> refs/remotes/origin/faruk_tests
 from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
@@ -14,6 +18,14 @@ from sklearn.cluster import AgglomerativeClustering
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 
 # =============================================================================
+<<<<<<< HEAD
+=======
+# Load .mgh file to use its headers.
+# =============================================================================
+mgh = fs.mghformat.load('sample_data/01/rh.rs-fMRI.mgh')
+
+# =============================================================================
+>>>>>>> refs/remotes/origin/faruk_tests
 # Load data & perform data preprocessing for each parameter (e.g. R1, T2*...)
 # =============================================================================
 
@@ -113,13 +125,13 @@ range_n_clusters = [160]
 
 print '4. compute structural hierarchical (Ward) clustering...'
 
-X = np.zeros((nverts, 3))
-X = data
+X = np.copy(data)
 
 for c in range_n_clusters:
     print '   - %d clusters' % c
     st = time()
 
+<<<<<<< HEAD
     # We should come up with a method to test different weightings for the different
     # features, probably within 'euclidean_distances' function
     #
@@ -135,7 +147,15 @@ for c in range_n_clusters:
 # =============================================================================
 # Get euclidean distance for each pair of vertices
 # =============================================================================
+=======
+    ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
+                                   weights=weightings[0],
+                                   connectivity=connectivity).fit(X)
+>>>>>>> refs/remotes/origin/faruk_tests
 
+    # =========================================================================
+    # Get euclidean distance for each pair of vertices
+    # =========================================================================
     euclidean_distances = np.zeros((nverts, max_num_nbrs))
     k = 0
     for i in range(0, nverts):
@@ -176,8 +196,8 @@ for c in range_n_clusters:
     unique_nbrs_clusters = np.empty((c, c))
     unique_nbrs_clusters[:] = np.NAN
     for i in range(0, c):
-        unique_nbrs_clusters[0:len(np.unique(nbrs_clusters[np.where(
-            labels == i)])), i] = np.unique(nbrs_clusters[np.where(labels == i)])
+        temp = nbrs_clusters[labels == i]
+        unique_nbrs_clusters[0:len(np.unique(temp)), i] = np.unique(temp)
     mask = np.all(np.isnan(unique_nbrs_clusters), axis=1)
     unique_nbrs_clusters = unique_nbrs_clusters[~mask]
 
@@ -186,4 +206,22 @@ for c in range_n_clusters:
     # =========================================================================
     X_labeled = np.empty((nverts, 4))
     X_labeled[:, 0:3] = X[:, 0:3]
+<<<<<<< HEAD
     X_labeled[:, 3] = labels
+=======
+    X_labeled[:, 3] = labels
+
+print 'Done.'
+
+# save as mgh
+temp = mgh.get_data()
+temp[:, 0, 0] = np.squeeze(labels)
+out = fs.MGHImage(temp, mgh.affine, mgh.header)
+save(out, ward_parcel_txt_string[:-4] + '.mgh')
+
+temp[:, 0, 0] = np.squeeze(borders)
+out = fs.MGHImage(temp, mgh.affine, mgh.header)
+save(out, borders_txt_string[:-4] + '.mgh')
+
+print 'All outputs saved.'
+>>>>>>> refs/remotes/origin/faruk_tests
