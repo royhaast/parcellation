@@ -16,7 +16,7 @@ from sklearn.cluster import AgglomerativeClustering
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 
 # =============================================================================
-# Load .mgh file to use its headers.
+# Load .mgh and .shape.gii file to use its headers.
 # =============================================================================
 mgh = fs.mghformat.load('sample_data/01/rh.rs-fMRI.mgh')
 gifti = gio.read('sample_data/rh.mask.shape.gii')
@@ -198,8 +198,7 @@ temp[:, 0, 0] = np.squeeze(borders)
 out = fs.MGHImage(temp, mgh.affine, mgh.header)
 save(out, borders_txt_string[:-4] + '.mgh')
 
-# save as gifti
-temp = gifti.darrays[0].data
+# save as .shape.gii
 gifti.darrays[0].data = labels.astype('<f4')
 gio.write(gifti, ward_parcel_txt_string[:-4] + '.shape.gii')
 
