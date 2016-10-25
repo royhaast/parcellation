@@ -118,88 +118,72 @@ print '     Done. Elapsed time (sec): ', time() - st
 # del min_n_cluster, max_n_cluster, max_n_cluster2, max_n_cluster3, range_n_clusters_tmp, range_n_clusters_tmp2, range_n_clusters_tmp3
 
 range_n_clusters = [160]
+range_weightings = [0]
 
 print '4. compute structural hierarchical (Ward) clustering...'
 
 X = np.copy(data)
 
 for c in range_n_clusters:
-    print '   - %d clusters' % c
-    st = time()
+    for w in range_weightings:
+        print '   - %d clusters, weighting %d' % (c, w)
+        st = time()
+    
+        ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
+                                       weights=weightings[w],
+                                       connectivity=connectivity).fit(X)
+    
+        exec('labels_%d_clusters' % c + " = ward.labels_")
+        labels = ward.labels_
+    
+        # =====================================================================
+        # Generate borders/contours using parcellation
+        # =====================================================================
+        borders = np.zeros((nverts, 1))
+        c_nbrs = np.zeros((nverts, 6))
+        for v in range(0, nverts):
+            for v_nbr in range(0, num_nbrs[v]):
+                c_nbrs[v, v_nbr] = labels[np.int(nbrs[v, v_nbr])]
+            if len(np.unique(c_nbrs[v])) > 1:
+                borders[v] = labels[v]        
+    
+        # =====================================================================
+        # Find neighbouring clusters for each cluster
+        # =====================================================================
+        nbrs_clusters = np.zeros((nverts, max_num_nbrs))
+        for i in range(0, nverts):
+            for j in range(0, 6):
+                vcur = np.int(nbrs[i, j])
+                nbrs_clusters[i, j] = labels[vcur]
+    
+        unique_nbrs_clusters = np.empty((c, c))
+        unique_nbrs_clusters[:] = np.NAN
+        for i in range(0, c):
+            temp = nbrs_clusters[labels == i]
+            unique_nbrs_clusters[0:len(np.unique(temp)), i] = np.unique(temp)
+        mask = np.all(np.isnan(unique_nbrs_clusters), axis=1)
+        unique_nbrs_clusters = unique_nbrs_clusters[~mask]
+    
+        print 'Done. Saving...'
+    
+        ward_parcel_file_string = 'results/rh_ward_%d_clusters_weighting_%d' % (c, w)
+        borders_file_string = 'results/rh_ward_%d_clusters_weighting_%d_borders' % (c, w)
 
-    ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
-                                   weights=weightings[0],
-                                   connectivity=connectivity).fit(X)
-
-    # =========================================================================
-    # Get euclidean distance for each pair of vertices
-    # =========================================================================
-    euclidean_distances = np.zeros((nverts, max_num_nbrs))
-    k = 0
-    for i in range(0, nverts):
-        for j in range(0, num_nbrs[i]):
-            euclidean_distances[IndX[k], j] = connectivity.data[k]
-            k = k + 1
-    exec('distances_%d_clusters' % c + " = euclidean_distances")
-
-    exec('labels_%d_clusters' % c + " = ward.labels_")
-    labels = ward.labels_
-
-    ward_parcel_txt_string = 'results/rh_ward_%d_clusters.txt' % c
-    np.savetxt(ward_parcel_txt_string, labels % c, fmt='%1.1i')
-
-    # =========================================================================
-    # Generate borders/contours using parcellation
-    # =========================================================================
-    borders = np.zeros((nverts, 1))
-    c_nbrs = np.zeros((nverts, 6))
-    for v in range(0, nverts):
-        for v_nbr in range(0, num_nbrs[v]):
-            c_nbrs[v, v_nbr] = labels[np.int(nbrs[v, v_nbr])]
-        if len(np.unique(c_nbrs[v])) > 1:
-            borders[v] = labels[v]
-
-    borders_txt_string = 'results/rh_ward_%d_clusters_borders.txt' % c
-    np.savetxt(borders_txt_string, borders, fmt='%1.1i')
-
-    # =========================================================================
-    # Find neighbouring clusters for each cluster
-    # =========================================================================
-    nbrs_clusters = np.zeros((nverts, max_num_nbrs))
-    for i in range(0, nverts):
-        for j in range(0, 6):
-            vcur = np.int(nbrs[i, j])
-            nbrs_clusters[i, j] = labels[vcur]
-
-    unique_nbrs_clusters = np.empty((c, c))
-    unique_nbrs_clusters[:] = np.NAN
-    for i in range(0, c):
-        temp = nbrs_clusters[labels == i]
-        unique_nbrs_clusters[0:len(np.unique(temp)), i] = np.unique(temp)
-    mask = np.all(np.isnan(unique_nbrs_clusters), axis=1)
-    unique_nbrs_clusters = unique_nbrs_clusters[~mask]
-
-    # =========================================================================
-    # Concatenate data+labels connected clusters
-    # =========================================================================
-    X_labeled = np.empty((nverts, 4))
-    X_labeled[:, 0:3] = X[:, 0:3]
-    X_labeled[:, 3] = labels
-
-print 'Done.'
-
-# save as mgh
-temp = mgh.get_data()
-temp[:, 0, 0] = np.squeeze(labels)
-out = fs.MGHImage(temp, mgh.affine, mgh.header)
-save(out, ward_parcel_txt_string[:-4] + '.mgh')
-
-temp[:, 0, 0] = np.squeeze(borders)
-out = fs.MGHImage(temp, mgh.affine, mgh.header)
-save(out, borders_txt_string[:-4] + '.mgh')
-
-# save as .shape.gii
-gifti.darrays[0].data = labels.astype('<f4')
-gio.write(gifti, ward_parcel_txt_string[:-4] + '.shape.gii')
-
-print 'All outputs saved.'
+        # save as mgh    
+        temp = mgh.get_data()
+        temp[:, 0, 0] = np.squeeze(labels)
+        out = fs.MGHImage(temp, mgh.affine, mgh.header)
+        save(out, ward_parcel_file_string + '.mgh')
+        
+        temp[:, 0, 0] = np.squeeze(borders)
+        out = fs.MGHImage(temp, mgh.affine, mgh.header)
+        save(out, borders_file_string + '.mgh')
+        
+        # save as .shape.gii
+        gifti.darrays[0].data = labels.astype('<f4')
+        gio.write(gifti, ward_parcel_file_string + '.shape.gii')
+        
+        gifti.darrays[0].data = borders.astype('<f4')
+        gio.write(gifti, borders_file_string + '.shape.gii')
+        
+        print 'All outputs saved.'
