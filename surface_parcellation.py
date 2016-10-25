@@ -5,6 +5,7 @@ Based on the Frontiers paper and codes by Thririon, B. (2014).
 import numpy as np
 from time import time
 from nibabel import freesurfer as fs
+import nibabel.gifti.giftiio as gio
 from nibabel import save
 from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
@@ -18,6 +19,7 @@ imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
 # Load .mgh file to use its headers.
 # =============================================================================
 mgh = fs.mghformat.load('sample_data/01/rh.rs-fMRI.mgh')
+gifti = gio.read('sample_data/rh.mask.shape.gii')
 
 # =============================================================================
 # Load data & perform data preprocessing for each parameter (e.g. R1, T2*...)
@@ -143,7 +145,7 @@ for c in range_n_clusters:
     exec('labels_%d_clusters' % c + " = ward.labels_")
     labels = ward.labels_
 
-    ward_parcel_txt_string = 'results/rh_ward_%d_clusters_noCBF.txt' % c
+    ward_parcel_txt_string = 'results/rh_ward_%d_clusters.txt' % c
     np.savetxt(ward_parcel_txt_string, labels % c, fmt='%1.1i')
 
     # =========================================================================
@@ -157,7 +159,7 @@ for c in range_n_clusters:
         if len(np.unique(c_nbrs[v])) > 1:
             borders[v] = labels[v]
 
-    borders_txt_string = 'results/rh_ward_%d_clusters_borders_noCBF.txt' % c
+    borders_txt_string = 'results/rh_ward_%d_clusters_borders.txt' % c
     np.savetxt(borders_txt_string, borders, fmt='%1.1i')
 
     # =========================================================================
@@ -195,5 +197,10 @@ save(out, ward_parcel_txt_string[:-4] + '.mgh')
 temp[:, 0, 0] = np.squeeze(borders)
 out = fs.MGHImage(temp, mgh.affine, mgh.header)
 save(out, borders_txt_string[:-4] + '.mgh')
+
+# save as gifti
+temp = gifti.darrays[0].data
+gifti.darrays[0].data = labels.astype('<f4')
+gio.write(gifti, ward_parcel_txt_string[:-4] + '.shape.gii')
 
 print 'All outputs saved.'
