@@ -1,10 +1,6 @@
 """Functions for surface-based parcellation using freesurfer files."""
-from os import path
 import numpy as np
-import pickle
 from sklearn import metrics
-from sklearn.decomposition import PCA
-from sklearn.cluster import AgglomerativeClustering
 
 def generate_weights(n_wcombs, parameters):
     """Generate combinations of weights.
@@ -39,53 +35,7 @@ def supervised_rating(true_label, pred_label, score='ars', verbose=False):
     elif score == 'vm':
         return vm
     else:
-        return ami    
-    
-def reproducibility_selection(
-    X, niter=2, method='AgglomerativeClustering', k_range=range_n_clusters, write_dir='/tmp',
-    verbose=True):
-    """ Returns a reproducibility metric on bootstraped models
-    
-    Parameters
-    ----------
-    X: array of shape (n_voxels, n_contrasts, n_subjects)
-       the input data
-    grp_mask: array of shape (image_shape),
-              the non-zeros elements yield the spatial model
-    niter: int, number of bootstrap samples estimated
-    method: string, one of 'ward', 'kmeans', 'spectral'
-    k_range: list of ints, 
-             the possible number of parcels to be tested
-    """
-    maps = []
-    for i in range(niter):
-        bootstrap = (np.random.rand(X.shape[1]) * X.shape[1]).astype(int)
-        X_ = X[:, bootstrap]
-        maps.append(PCA(n_components=n_components).fit_transform(X_))
-            
-    ars_score = {}
-    ami_score = {}
-    vm_score = {}
-    for (ik, k_) in enumerate(k_range):
-        label_ = []
-        for i in range(niter):
-            bootstrap = (np.random.rand(X.shape[1]) * X.shape[1]).astype(int)
-            ward = AgglomerativeClustering(linkage='ward', n_clusters=k_, connectivity=connectivity).fit(maps[i])
-            labels = ward.labels_
-            label_.append(labels)
-        ars_score[k_] = reproducibility_rating(label_, 'ars')
-        ami_score[k_] = reproducibility_rating(label_, 'ami')
-        vm_score[k_] = reproducibility_rating(label_, 'vm')
-        if verbose:
-            print 'k: ', k_, '  ari: ', ars_score[k_], 'ami: ',ami_score[k_],\
-                ' vm: ', vm_score[k_]
-    file = open(path.join(write_dir, 'ari_score_%s.pck' % method), 'w')
-    pickle.dump(ars_score, file)
-    file = open(path.join(write_dir, 'ami_score_%s.pck' % method), 'w')
-    pickle.dump(ami_score, file)
-    file = open(path.join(write_dir, 'vm_score_%s.pck' % method), 'w')
-    pickle.dump(vm_score, file)
-    return ars_score, ami_score, vm_score        
+        return ami
 
 def reproducibility_rating(labels, score='ars', verbose=False):
     """ Run mutliple pairwise supervised ratings to obtain an average

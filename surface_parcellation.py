@@ -10,7 +10,7 @@ from nibabel import save
 from scipy.sparse import coo_matrix
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer
-from utility_functions import generate_weights
+from utility_functions import (generate_weights, reproducibility_rating)
 from sklearn.cluster import AgglomerativeClustering
 
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
@@ -26,6 +26,7 @@ gifti = gio.read('sample_data/rh.mask.shape.gii')
 # =============================================================================
 
 parameters = ['R1', 'T2', 'CBF', 'thickness']  # which parameters to include
+n_components = len(parameters)
 n_wcombs = 100
 weightings = generate_weights(n_wcombs, parameters)
 
@@ -102,39 +103,46 @@ connectivity = coo_matrix(
 
 print '     Done. Elapsed time (sec): ', time() - st
 
-# =============================================================================
-# Generate vector of cluster numbers
-# =============================================================================
-# min_n_cluster=2
-# max_n_cluster=50
-# max_n_cluster2=100
-# max_n_cluster3=1050
-# range_n_clusters_tmp = np.arange(min_n_cluster,max_n_cluster,1).tolist()
-# range_n_clusters_tmp2 = np.arange(max_n_cluster,max_n_cluster2,5).tolist()
-# range_n_clusters_tmp3 = np.arange(max_n_cluster2,max_n_cluster3,50).tolist()
-# range_n_clusters = range_n_clusters_tmp+range_n_clusters_tmp2+range_n_clusters_tmp3
-# range_n_clusters.reverse()
-#
-# del min_n_cluster, max_n_cluster, max_n_cluster2, max_n_cluster3, range_n_clusters_tmp, range_n_clusters_tmp2, range_n_clusters_tmp3
-
-range_n_clusters = [160]
+k_range = [10, 50, 100, 200, 500]
 range_weightings = [0]
+niter = 2
 
 print '4. compute structural hierarchical (Ward) clustering...'
 
 X = np.copy(data)
+maps = []
+for i in range(niter):
+    bootstrap = (np.random.rand(X.shape[1]) * X.shape[1]).astype(int)
+    X_ = X[:, bootstrap]
+    maps.append(PCA(n_components=n_components).fit_transform(X_))
+        
+ars_score = {}
+ami_score = {}
+vm_score = {}
 
-for c in range_n_clusters:
+for (ik, k_) in enumerate(k_range):
     for w in range_weightings:
-        print '   - %d clusters, weighting %d' % (c, w)
+        label_ = []
+        print '   - %d clusters, weighting %d' % (k_, w)
         st = time()
     
-        ward = AgglomerativeClustering(linkage='ward', n_clusters=c,
+        ward = AgglomerativeClustering(linkage='ward', n_clusters=k_,
                                        weights=weightings[w],
                                        connectivity=connectivity).fit(X)
     
-        exec('labels_%d_clusters' % c + " = ward.labels_")
+        exec('labels_%d_clusters' % k_ + " = ward.labels_")
         labels = ward.labels_
+        
+        for i in range(niter):
+            bootstrap = (np.random.rand(X.shape[1]) * X.shape[1]).astype(int)
+            ward = AgglomerativeClustering(linkage='ward', n_clusters=k_,
+                                       weights=weightings[w],
+                                       connectivity=connectivity).fit(maps[i])
+            labels = ward.labels_
+            label_.append(labels)
+        ars_score[k_] = reproducibility_rating(label_, 'ars')
+        ami_score[k_] = reproducibility_rating(label_, 'ami')
+        vm_score[k_] = reproducibility_rating(label_, 'vm')
     
         # =====================================================================
         # Generate borders/contours using parcellation
@@ -156,9 +164,9 @@ for c in range_n_clusters:
                 vcur = np.int(nbrs[i, j])
                 nbrs_clusters[i, j] = labels[vcur]
     
-        unique_nbrs_clusters = np.empty((c, c))
+        unique_nbrs_clusters = np.empty((k_, k_))
         unique_nbrs_clusters[:] = np.NAN
-        for i in range(0, c):
+        for i in range(0, k_):
             temp = nbrs_clusters[labels == i]
             unique_nbrs_clusters[0:len(np.unique(temp)), i] = np.unique(temp)
         mask = np.all(np.isnan(unique_nbrs_clusters), axis=1)
@@ -166,8 +174,8 @@ for c in range_n_clusters:
     
         print 'Done. Saving...'
     
-        ward_parcel_file_string = 'results/rh_ward_%d_clusters_weighting_%d' % (c, w)
-        borders_file_string = 'results/rh_ward_%d_clusters_weighting_%d_borders' % (c, w)
+        ward_parcel_file_string = 'results/rh_ward_%d_clusters_weighting_%d' % (k_, w)
+        borders_file_string = 'results/rh_ward_%d_clusters_weighting_%d_borders' % (k_, w)
 
         # save as mgh    
         temp = mgh.get_data()
