@@ -16,17 +16,16 @@ from scipy import stats
 parameters = ['R1', 'T2', 'thickness']  # which parameters to include
 
 print 'loading surface and input data for parcellation...'
-surf = nibabel.freesurfer.io.read_geometry(
-    'D:/MR_data/HBM_myelin/analyzed/fsaverage/surf/rh.inflated')
-nverts = len(surf[0])
-nfaces = len(surf[1])
-faces = surf[1]
-coords = surf[0]
+coords, faces = nibabel.freesurfer.io.read_geometry(
+    './sample_data/rh.inflated')
+
+nverts = len(coords)
+nfaces = len(faces)
 
 data = np.zeros((nverts, len(parameters)))
 for j in range(0, len(parameters)):
     data_tmp = nibabel.freesurfer.io.read_morph_data(
-        'D:/MR_data/HBM_myelin/analyzed/fsaverage/parcellation/rh.%s' % parameters[j])
+        './sample_data/rh.%s' % parameters[j])
     data_tmp = stats.zscore(data_tmp)
     for i in range(0, nverts):
         data[i, j] = data_tmp[i]
