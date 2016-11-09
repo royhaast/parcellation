@@ -2,6 +2,7 @@
 import numpy as np
 from sklearn import metrics
 
+
 def generate_weights(n_wcombs, parameters):
     """Generate combinations of weights.
 
@@ -11,9 +12,10 @@ def generate_weights(n_wcombs, parameters):
     for i in range(n_wcombs):
         weightings[i] = np.random.dirichlet(np.ones(len(parameters)), size=1)
     return weightings
-    
+
+
 def supervised_rating(true_label, pred_label, score='ars', verbose=False):
-    """Provide assessment of a certain labeling given a ground truth
+    """Provide assessment of a certain labeling given a ground truth.
 
     Parameters
     ----------
@@ -36,9 +38,10 @@ def supervised_rating(true_label, pred_label, score='ars', verbose=False):
         return vm
     else:
         return ami
-        
+
+
 def log_likelihood_fast(s0, s1, s2, mu, sigma1, sigma2):
-    """ Return the data loglikelihood (fast method specific to the block model)
+    """Return the data loglikelihood (fast method specific to the block model).
 
     Parameters
     ==========
@@ -53,18 +56,19 @@ def log_likelihood_fast(s0, s1, s2, mu, sigma1, sigma2):
     ll: float, the log-likelihood of the data under the proposed model
     """
     log_det, quad = 0, 0
-    for (s0_, s1_, s2_) in zip (s0, s1, s2):
+    for (s0_, s1_, s2_) in zip(s0, s1, s2):
         if s0_ > 0:
             log_det += np.log(s0_ * sigma2 ** 2 + sigma1 ** 2) +\
                 (s0_ - 1) * np.log(sigma1 ** 2)
             prec = - 1. / (s0_ * sigma1 ** 2 + sigma1 ** 4 / sigma2 ** 2)
             quad += prec * (s0_ ** 2) * (s1_ / s0_ - mu) ** 2
-            quad += (s2_ + mu * (s0_ * mu - 2 * s1_ )) / sigma1 ** 2
+            quad += (s2_ + mu * (s0_ * mu - 2 * s1_)) / sigma1 ** 2
     return - 0.5 * (log_det + quad + s0.sum() * np.log(2 * np.pi))
-        
-def em_inference_fast(y, u, mu=None, sigma1=None, sigma2=None, niter=30, 
+
+
+def em_inference_fast(y, u, mu=None, sigma1=None, sigma2=None, niter=30,
                       eps=1.e-3, mins=1.e-6, verbose=False):
-    """use an EM algorithm to compute sigma1, sigma2, mu -- fast version
+    """Use an EM algorithm to compute sigma1, sigma2, mu -- fast version.
 
     Parameters
     ==========
@@ -102,14 +106,14 @@ def em_inference_fast(y, u, mu=None, sigma1=None, sigma2=None, niter=30,
         sigma1 = np.sqrt((s2 - (s1 ** 2) / s0).sum() / y.size)
     if sigma2 is None:
         sigma2 = np.std(s1 / s0)
-    
+
     # EM iterations
     ll_old = - np.infty
     for j in range(niter):
         sigma1, sigma2 = np.maximum(sigma1, mins), np.maximum(sigma2, mins)
         ll_ = log_likelihood_fast(s0, s1, s2, mu, sigma1, sigma2)
-        #ll_ = log_likelihood_(y, mu, sigma1, sigma2, u)
-        #assert(np.abs(ll - ll_) < 1.e-8)
+        # ll_ = log_likelihood_(y, mu, sigma1, sigma2, u)
+        # assert(np.abs(ll - ll_) < 1.e-8)
         if verbose:
             print j, ll_
         if ll_ < ll_old - eps and len(np.unique(u)) < u.size:
@@ -124,12 +128,12 @@ def em_inference_fast(y, u, mu=None, sigma1=None, sigma2=None, niter=30,
             mu = cbeta.mean()
         sigma2 = np.sqrt(((cbeta - mu) ** 2 + var).mean())
         sigma1 = np.sqrt(
-            (s0 * var + s2 +  cbeta * (s0 * cbeta - 2 * s1)).sum() / y.size)
-    return mu, sigma1, sigma2, ll_       
+            (s0 * var + s2 + cbeta * (s0 * cbeta - 2 * s1)).sum() / y.size)
+    return mu, sigma1, sigma2, ll_
+
 
 def reproducibility_rating(labels, score='ars', verbose=False):
-    """ Run mutliple pairwise supervised ratings to obtain an average
-    rating
+    """Run multiple pairwise supervised ratings to obtain an average rating.
 
     Parameters
     ----------
@@ -142,18 +146,20 @@ def reproducibility_rating(labels, score='ars', verbose=False):
     av_score:  float, a scalar summarizing the reproducibility of pairs of maps
     """
     av_score = 0
-    niter = len(labels) 
+    niter = len(labels)
     for i in range(1, niter):
         for j in range(i):
             av_score += supervised_rating(labels[j], labels[i], score=score,
-                                       verbose=verbose)
+                                          verbose=verbose)
             av_score += supervised_rating(labels[i], labels[j], score=score,
-                                       verbose=verbose)
+                                          verbose=verbose)
     av_score /= (niter * (niter - 1))
     return av_score
 
-def parameter_map(X, labels, two_level=True, null=False, sigma1=None, sigma2=None, niter=30, eps=1.e-3, verbose=False):
-    """Return the likelihood of the model per label
+
+def parameter_map(X, labels, two_level=True, null=False, sigma1=None,
+                  sigma2=None, niter=30, eps=1.e-3, verbose=False):
+    """Return the likelihood of the model per label.
 
     Parameters
     ==========
@@ -180,7 +186,10 @@ def parameter_map(X, labels, two_level=True, null=False, sigma1=None, sigma2=Non
     for k in np.unique(labels):
         y = X[labels == k].T.ravel()
         u = np.repeat(0, X[labels == k].shape[0])
-        mu[k], sigma1[k], sigma2[k], ll[k] = em_inference_fast(y, u, mu[k], sigma1[k], sigma2[k], niter, eps,
-                             verbose=verbose) 
+        mu[k], sigma1[k], sigma2[k], ll[k] = em_inference_fast(y, u, mu[k],
+                                                               sigma1[k],
+                                                               sigma2[k],
+                                                               niter, eps,
+                                                               verbose=verbose)
         bic[k] = -2 * ll[k] + 3 * np.log(X[labels == k].size)
     return ll, mu, sigma1, sigma2, bic
