@@ -1,4 +1,5 @@
-""" Script for surface-based parcellation using freesurfer files.
+"""Script for surface-based parcellation using freesurfer files.
+
 Based on the Frontiers paper and codes by Thririon, B. (2014).
 """
 
@@ -203,10 +204,10 @@ for w in range_weightings:
 
         print 'Done. Saving...'
 
-        ward_parcel_file_string = 'results/rh_ward_%d_clusters_weighting_%d' % (
-            k_, w)
-        borders_file_string = 'results/rh_ward_%d_clusters_weighting_%d_borders' % (
-            k_, w)
+        ward_parcel_file_string = 'results/rh_ward_%d_clusters_weight_%d' \
+            % (k_, w)
+        borders_file_string = 'results/rh_ward_%d_clusters_weight_%d_borders' \
+            % (k_, w)
 
         # save as mgh
         temp = mgh.get_data()
