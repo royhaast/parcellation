@@ -5,11 +5,11 @@ from sklearn import metrics
 
 def generate_weights(n_wcombs, parameters):
     """Generate combinations of weights.
-    Every combination will be equal to 1.
+    Every squared combination will be equal to 1.
     """
     weightings = np.zeros((n_wcombs, len(parameters)))
     for i in range(n_wcombs):
-        weightings[i] = np.random.dirichlet(np.ones(len(parameters)), size=1)
+        weightings[i] = np.sqrt(np.random.dirichlet(np.ones(len(parameters)), size=1))
     return weightings
 
 
