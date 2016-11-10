@@ -103,8 +103,8 @@ connectivity = coo_matrix(
 
 print '     Done. Elapsed time (sec): ', time() - st
 
-k_range = [10, 50, 100, 200, 500]
-range_weightings = [0, 19, 39, 59, 79, 99]
+k_range = [10, 25, 50, 75, 100, 150, 200, 250, 500, 750, 1000, 3000, 5000]
+range_weightings = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 99]
 ars_file_string = 'results/rh_ward_ars_score.txt'
 ars_txt = open(ars_file_string, 'w')
 ami_file_string = 'results/rh_ward_ami_score.txt'
@@ -125,7 +125,7 @@ for i in range(niter):
 all_bic = np.zeros((len(range_weightings), len(k_range)))
 all_crit = np.zeros((len(range_weightings), len(k_range)))  
 
-for w in range_weightings:
+for (iw, w) in enumerate(range_weightings):
     ars_score = {}    
     ami_score = {}        
     vm_score = {}
@@ -167,8 +167,8 @@ for w in range_weightings:
                 X[:, component], labels, null=False)
             bic += bic_.sum()
             ll += np.sum(ll1)
-        all_crit[w, ik] = ll
-        all_bic[w, ik] = bic
+        all_crit[iw, ik] = ll
+        all_bic[iw, ik] = bic
     
         # =====================================================================
         # Generate borders/contours using parcellation
