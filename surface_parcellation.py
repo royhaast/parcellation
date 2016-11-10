@@ -30,6 +30,7 @@ parameters = ['R1', 'T2', 'CBF', 'thickness']  # which parameters to include
 n_components = len(parameters)
 n_wcombs = 100
 weightings = generate_weights(n_wcombs, parameters)
+performance_testing = False
 
 print 'loading surface and input data for parcellation...'
 coords, faces = fs.io.read_geometry('sample_data/rh.inflated')
@@ -47,7 +48,7 @@ for i, string in enumerate(parameters):
         data_tmp_finite[data_tmp_finite < perc_min] = perc_min
         data_tmp_finite[data_tmp_finite > perc_max] = perc_max
         data_tmp[np.isfinite(data_tmp)] = data_tmp_finite
-        data[:, i] = data_tmp
+    data[:, i] = data_tmp
 
     # Perform whitening (decorrelation) of the data (after imputation to
     # replace NaNs by mean of each feature)
@@ -104,8 +105,8 @@ connectivity = coo_matrix(
 
 print '     Done. Elapsed time (sec): ', time() - st
 
-k_range = [10, 50, 100, 200, 500]
-range_weightings = [0, 19, 39, 59, 79, 99]
+k_range = [200]
+range_weightings = [10, 70]
 ars_file_string = 'results/rh_ward_ars_score.txt'
 ars_txt = open(ars_file_string, 'w')
 ami_file_string = 'results/rh_ward_ami_score.txt'
@@ -142,36 +143,37 @@ for w in range_weightings:
 
         exec('labels_%d_clusters' % k_ + " = ward.labels_")
         labels = ward.labels_
-
-        # =====================================================================
-        # Compute reproducibility and BIC critera
-        # =====================================================================
-        for i in range(niter):
-            ward = AgglomerativeClustering(linkage='ward', n_clusters=k_,
-                                           weights=weightings[w],
-                                           connectivity=connectivity).fit(maps[i])
-            labels = ward.labels_
-            label_.append(labels)
-
-        ars_score[k_] = reproducibility_rating(label_, 'ars')
-        ars_txt.write("Weighting %s, %s clusters: %f\n" %
-                      (w, k_, ars_score[k_]))
-
-        ami_score[k_] = reproducibility_rating(label_, 'ami')
-        ami_txt.write("Weighting %s, %s clusters: %f\n" %
-                      (w, k_, ami_score[k_]))
-
-        vm_score[k_] = reproducibility_rating(label_, 'vm')
-        vm_txt.write("Weighting %s, %s clusters: %f\n" % (w, k_, vm_score[k_]))
-
-        ll, bic = 0, 0
-        for component in range(n_components):
-            ll1, mu_, sigma1_, sigma2_, bic_ = parameter_map(
-                X[:, component], labels, null=False)
-            bic += bic_.sum()
-            ll += np.sum(ll1)
-        all_crit[w, ik] = ll
-        all_bic[w, ik] = bic
+        
+        if performance_testing:
+            # =====================================================================
+            # Compute reproducibility and BIC critera
+            # =====================================================================
+            for i in range(niter):
+                ward = AgglomerativeClustering(linkage='ward', n_clusters=k_,
+                                               weights=weightings[w],
+                                               connectivity=connectivity).fit(maps[i])
+                labels = ward.labels_
+                label_.append(labels)
+    
+            ars_score[k_] = reproducibility_rating(label_, 'ars')
+            ars_txt.write("Weighting %s, %s clusters: %f\n" %
+                          (w, k_, ars_score[k_]))
+    
+            ami_score[k_] = reproducibility_rating(label_, 'ami')
+            ami_txt.write("Weighting %s, %s clusters: %f\n" %
+                          (w, k_, ami_score[k_]))
+    
+            vm_score[k_] = reproducibility_rating(label_, 'vm')
+            vm_txt.write("Weighting %s, %s clusters: %f\n" % (w, k_, vm_score[k_]))
+    
+            ll, bic = 0, 0
+            for component in range(n_components):
+                ll1, mu_, sigma1_, sigma2_, bic_ = parameter_map(
+                    X[:, component], labels, null=False)
+                bic += bic_.sum()
+                ll += np.sum(ll1)
+            all_crit[w, ik] = ll
+            all_bic[w, ik] = bic
 
         # =====================================================================
         # Generate borders/contours using parcellation
