@@ -115,7 +115,13 @@ octave-workspace
 # Simulink autosave extension
 *.autosave
 
-# Do not upload big BraibVoyager files
-.vmr
-.vmp
-.smp
+# and mat files
+*.mat
+
+##---------------------------------------------------
+# Do not upload BrainVoyager files
+##---------------------------------------------------
+*.vmr
+*.vmp
+*.smp
+*.srf
